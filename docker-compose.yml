@@ -1,1 +1,21 @@
+services:
+  postgres:
+    image: postgres:16
+    container_name: shelfd-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: shelfd
+      POSTGRES_USER: shelfd
+      POSTGRES_PASSWORD: shelfd_password
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U shelfd -d shelfd"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
 
+volumes:
+  postgres_data:

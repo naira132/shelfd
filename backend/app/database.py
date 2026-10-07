@@ -6,7 +6,7 @@ from sqlalchemy.orm import Session, sessionmaker
 
 DATABASE_URL = os.getenv(
     "DATABASE_URL",
-    "postgresql+psycopg://localhost/shelfd",
+    "postgresql+psycopg://shelfd:shelfd_password@localhost:5432/shelfd",
 )
 
 
