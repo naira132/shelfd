@@ -9,3 +9,4 @@ from .user import User
 from .book import Book
 from .author import Author
 from .book_author import BookAuthor
+from .user_book import UserBook
