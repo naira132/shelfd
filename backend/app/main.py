@@ -1,5 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from backend.app.routes.books import router as books_router
+
 
 
 app = FastAPI(
@@ -32,3 +34,5 @@ def health_check():
         "status": "ok",
         "service": "shelfd-api",
     }
+
+app.include_router(books_router)
