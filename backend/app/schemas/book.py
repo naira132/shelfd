@@ -46,3 +46,13 @@ class BookUpdate(BaseModel):
     cover_url: str | None = None
     source: str | None = None
     source_id: str | None = None
+
+class BookSearchResult(BaseModel):
+    title: str | None = None
+    authors: list[str] = []
+    isbn_10: str | None = None
+    published_year: int | None = None
+    publisher: str | None = None
+    cover_url: str | None = None
+    source: str
+    source_id: str | None = None

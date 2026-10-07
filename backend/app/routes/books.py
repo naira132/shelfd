@@ -5,8 +5,13 @@ from sqlalchemy.orm import Session
 
 from backend.app.database import get_db
 from backend.app.models.book import Book
-from backend.app.schemas.book import BookCreate, BookResponse, BookUpdate
-
+from backend.app.schemas.book import (
+    BookCreate,
+    BookResponse,
+    BookSearchResult,
+    BookUpdate,
+)
+from backend.app.services.book_search import search_books
 
 router = APIRouter(
     prefix="/books",
@@ -40,6 +45,19 @@ def get_books(
     books = db.scalars(select(Book)).all()
     return books
 
+@router.get(
+    "/search",
+    response_model=list[BookSearchResult],
+)
+def search_books_endpoint(q: str):
+    try:
+        return search_books(q)
+    except RuntimeError:
+        raise HTTPException(
+            status_code=503,
+            detail="Book search service is temporarily unavailable",
+        )
+        
 @router.get(
     "/{book_id}",
     response_model=BookResponse,

@@ -11,3 +11,4 @@ pytesseract
 minio
 passlib[bcrypt]
 python-jose[cryptography]
+httpx
