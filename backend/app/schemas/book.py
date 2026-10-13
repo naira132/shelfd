@@ -1,3 +1,4 @@
+from typing import List, Literal
 from datetime import date
 from uuid import UUID
 
@@ -70,3 +71,17 @@ class BookEditionDetail(BaseModel):
     cover_url: str | None = None
     source: str
     source_id: str | None = None
+
+
+class AddBookToLibrary(BaseModel):
+    user_id: UUID
+    edition_id: str = Field(min_length=1)
+    status: Literal[
+    "Want to Read",
+    "Currently Reading",
+    "Read",
+    "On Hold",
+    "DNF'd",
+    "Re-read",
+    "Re-reading",
+] = "Want to Read"

@@ -1,6 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from backend.app.routes.books import router as books_router
+from backend.app.routes.user_books import router as user_books_router
 
 
 
@@ -36,3 +37,4 @@ def health_check():
     }
 
 app.include_router(books_router)
+app.include_router(user_books_router)
