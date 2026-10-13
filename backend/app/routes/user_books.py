@@ -201,15 +201,30 @@ def update_user_book(
         if user_book.started_at is None:
             user_book.started_at = datetime.now(timezone.utc)
 
-    # 6. Record when the user finishes a book.
+    # 6. Handle books marked as finished.
     if user_book.status == "Read":
+        user_book.progress_percent = 100
+
         if user_book.finished_at is None:
             user_book.finished_at = datetime.now(timezone.utc)
+    else:
+        # Clear the finish date if the book is no longer marked Read.
+        user_book.finished_at = None
 
     # 7. Record progress when the user DNF's a book.
+    # 7. Handle DNF information.
     if user_book.status == "DNF'd":
-        if "dnf_at_percent" not in updates:
+    # Use an explicitly supplied DNF percentage if provided.
+        if "dnf_at_percent" in updates:
+            user_book.dnf_at_percent = updates["dnf_at_percent"]
+        else:
+        # Otherwise, record the updated reading progress.
             user_book.dnf_at_percent = user_book.progress_percent
+    else:
+    # Clear DNF information when leaving the DNF status.
+        user_book.dnf_at_percent = None
+        user_book.dnf_reason = None
+    
 
     # 8. Save the changes to the database.
     try:
