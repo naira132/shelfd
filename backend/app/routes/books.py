@@ -7,11 +7,15 @@ from backend.app.database import get_db
 from backend.app.models.book import Book
 from backend.app.schemas.book import (
     BookCreate,
+    BookEditionDetail,
     BookResponse,
     BookSearchResult,
     BookUpdate,
 )
-from backend.app.services.book_search import search_books
+from backend.app.services.book_search import (
+    get_edition_details,
+    search_books,
+)
 
 router = APIRouter(
     prefix="/books",
@@ -56,6 +60,20 @@ def search_books_endpoint(q: str):
         raise HTTPException(
             status_code=503,
             detail="Book search service is temporarily unavailable",
+        )
+
+
+@router.get(
+    "/editions/{edition_id}",
+    response_model=BookEditionDetail,
+)
+def get_book_edition_endpoint(edition_id: str):
+    try:
+        return get_edition_details(edition_id)
+    except RuntimeError:
+        raise HTTPException(
+            status_code=503,
+            detail="Book edition service is temporarily unavailable",
         )
         
 @router.get(

@@ -56,3 +56,17 @@ class BookSearchResult(BaseModel):
     cover_url: str | None = None
     source: str
     source_id: str | None = None
+
+
+class BookEditionDetail(BaseModel):
+    title: str | None = None
+    authors: list[str] = Field(default_factory=list)
+    isbn_10: str | None = None
+    isbn_13: str | None = None
+    published_year: int | None = None
+    published_date: str | None = None
+    publisher: str | None = None
+    page_count: int | None = Field(default=None, ge=0)
+    cover_url: str | None = None
+    source: str
+    source_id: str | None = None
