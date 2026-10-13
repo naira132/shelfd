@@ -20,10 +20,7 @@ router = APIRouter(
 )
 
 
-@router.post(
-    "/",
-    status_code=status.HTTP_201_CREATED,
-)
+@router.post("/", status_code=status.HTTP_201_CREATED)
 def add_book_to_library(
     request: AddBookToLibrary,
     db: Session = Depends(get_db),
@@ -59,7 +56,7 @@ def add_book_to_library(
     )
     book = db.scalar(book_statement)
 
-    # 4. If it doesn't exist, create the shared book record.
+    # 4. Create the shared book record if it doesn't exist.
     if book is None:
         book = Book(
             title=edition["title"],
@@ -75,7 +72,7 @@ def add_book_to_library(
         db.add(book)
         db.flush()
 
-    # 5. Check whether this user already has this book.
+    # 5. Prevent duplicate library entries.
     user_book_statement = select(UserBook).where(
         UserBook.user_id == request.user_id,
         UserBook.book_id == book.id,
@@ -182,62 +179,117 @@ def update_user_book(
             detail="Book not found in user's library",
         )
 
+    book = db.get(Book, user_book.book_id)
+
+    if book is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Book record not found",
+        )
+
     # 2. Get only the fields the client actually sent.
     updates = request.model_dump(exclude_unset=True)
 
-    # 3. Prevent status from being set to null.
+    # 3. Validate progress and synchronize pages and percentage.
+    if "progress_pages" in updates:
+        if updates["progress_pages"] is None:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail="Pages read cannot be null",
+            )
+
+        if book.page_count is None or book.page_count <= 0:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail=(
+                    "Cannot calculate progress because the "
+                    "book's page count is unknown"
+                ),
+            )
+
+        if updates["progress_pages"] > book.page_count:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail="Pages read cannot exceed the book's total page count",
+            )
+
+        # Pages take precedence if both progress fields are supplied.
+        updates["progress_percent"] = (
+            updates["progress_pages"] / book.page_count
+        ) * 100
+
+    elif "progress_percent" in updates:
+        if updates["progress_percent"] is None:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail="Progress percentage cannot be null",
+            )
+
+        if book.page_count is None or book.page_count <= 0:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail=(
+                    "Cannot calculate pages because the "
+                    "book's page count is unknown"
+                ),
+            )
+
+        # Round to the nearest whole page, with halves rounded up.
+        updates["progress_pages"] = int(
+            book.page_count * updates["progress_percent"] / 100 + 0.5
+        )
+
+    # 4. Prevent status from being set to null.
     if "status" in request.model_fields_set and request.status is None:
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
             detail="Status cannot be null",
         )
 
-    # 4. Apply the requested changes.
+    # 5. Apply the requested changes.
     for field, value in updates.items():
         setattr(user_book, field, value)
 
-    # 5. Record when the user starts reading.
+    # 6. Record when the user starts reading.
     if user_book.status == "Currently Reading":
         if user_book.started_at is None:
             user_book.started_at = datetime.now(timezone.utc)
 
-    # 6. Handle books marked as finished.
+    # 7. Handle completed books and finish timestamps.
     if user_book.status == "Read":
         user_book.progress_percent = 100
+
+        if book.page_count is not None and book.page_count > 0:
+            user_book.progress_pages = book.page_count
 
         if user_book.finished_at is None:
             user_book.finished_at = datetime.now(timezone.utc)
     else:
-        # Clear the finish date if the book is no longer marked Read.
         user_book.finished_at = None
 
-    # 7. Record progress when the user DNF's a book.
-    # 7. Handle DNF information.
+    # 8. Handle DNF information.
     if user_book.status == "DNF'd":
-    # Use an explicitly supplied DNF percentage if provided.
         if "dnf_at_percent" in updates:
             user_book.dnf_at_percent = updates["dnf_at_percent"]
         else:
-        # Otherwise, record the updated reading progress.
             user_book.dnf_at_percent = user_book.progress_percent
     else:
-    # Clear DNF information when leaving the DNF status.
         user_book.dnf_at_percent = None
         user_book.dnf_reason = None
-    
 
-    # 8. Save the changes to the database.
+    # 9. Save the changes to the database.
     try:
         db.commit()
         db.refresh(user_book)
-    except Exception:
+    except Exception as e:
         db.rollback()
+        print(f"Error updating user book: {e}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Could not update the book",
         )
 
-    # 9. Return the updated entry.
+    # 10. Return the updated entry.
     return {
         "user_book_id": str(user_book.id),
         "book_id": str(user_book.book_id),
