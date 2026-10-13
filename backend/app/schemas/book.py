@@ -85,3 +85,20 @@ class AddBookToLibrary(BaseModel):
     "Re-read",
     "Re-reading",
 ] = "Want to Read"
+
+class UserBookUpdate(BaseModel):
+    status: Literal[
+        "Want to Read",
+        "Currently Reading",
+        "Read",
+        "On Hold",
+        "DNF'd",
+        "Re-read",
+        "Re-reading",
+    ] | None = None
+
+    progress_pages: int | None = Field(default=None, ge=0)
+    progress_percent: float | None = Field(default=None, ge=0, le=100)
+    dnf_at_percent: float | None = Field(default=None, ge=0, le=100)
+    dnf_reason: str | None = None
+    
